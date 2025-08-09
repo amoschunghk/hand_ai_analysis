@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>手掌健康觀察報告｜可列印PDF</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    :root{
+        --primary:#0ea5e9; --secondary:#22c55e; --accent:#f59e0b; --danger:#ef4444;
+        --bg1:#0f172a; --bg2:#1e293b; --card:#ffffffee; --text:#0f172a;
+    }
+    body{
+        margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+        color:#111827;
+        background:
+            radial-gradient(1200px 600px at -10% -10%, #0ea5e922 0%, transparent 60%),
+            radial-gradient(1200px 600px at 110% 10%, #22c55e22 0%, transparent 60%),
+            linear-gradient(135deg, var(--bg1), var(--bg2));
+        min-height:100vh;
+    }
+    .container{ width:min(1200px, 94vw); margin:110px auto 80px; }
+    .appbar{
+        position:fixed; inset:0 0 auto 0; height:72px; display:flex; align-items:center; justify-content:space-between;
+        padding:0 16px 0 12px; background:linear-gradient(90deg, rgba(255,255,255,0.85), rgba(255,255,255,0.75));
+        backdrop-filter: blur(10px); border-bottom:1px solid #e5e7eb; z-index:10;
+    }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{ width:42px; height:42px; border-radius:12px; background: conic-gradient(from 0deg, var(--primary), var(--secondary), var(--accent), var(--primary)); box-shadow:0 6px 18px #00000022 inset, 0 1px 0 #ffffffaa inset; }
+    .title{ font-weight:800; letter-spacing:0.5px; color:#0f172a; }
+    .actions{ display:flex; gap:8px; }
+    .btn{ border:0; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:700; letter-spacing:0.3px; box-shadow:0 6px 16px #0000001a; transition: transform .06s ease, filter .2s ease; }
+    .btn:active{ transform: translateY(1px) scale(0.99); }
+    .btn-primary{ background:linear-gradient(135deg, var(--primary), #60a5fa); color:#fff;}
+    .btn-outline{ background:#fff; border:1px solid #e5e7eb; }
+    .badge{ font-size:12px; padding:2px 8px; border-radius:999px; background:#0000000f; }
+    .card{ background:var(--card); border-radius:16px; padding:20px; box-shadow: 0 10px 30px #00000024, 0 1px 0 #ffffffaa inset; border:1px solid #e5e7eb; margin-bottom:18px; }
+    h2, h3{ margin:6px 0 12px; }
+    .grid{ display:grid; gap:16px; }
+    @media (min-width: 960px){ .grid-2{ grid-template-columns: 1.2fr 1fr; } .grid-3{ grid-template-columns: repeat(3, 1fr); } }
+    table{ width:100%; border-collapse: collapse; }
+    th, td{ padding:12px 10px; border-bottom:1px solid #e5e7eb; vertical-align: top; }
+    th{ text-align:left; background:#f8fafc; position:sticky; top:0;}
+    tr:hover td{ background:#fafafa; }
+    .upload{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .preview{ width:260px; aspect-ratio: 3/5; object-fit:cover; border-radius:14px; background:#f1f5f9; border:1px dashed #cbd5e1; }
+    .row{ display:grid; grid-template-columns: 1fr 130px; gap:12px; align-items:center; margin-bottom:10px;}
+    .row input[type="range"]{ width:100%; }
+    .row output{ display:inline-block; min-width:2ch; text-align:right; font-weight:700;}
+    .chip{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#f1f5f9; margin:2px 6px 0 0; }
+    .chip i{ width:8px; height:8px; border-radius:999px; display:inline-block; }
+    .c1{ background:var(--primary);} .c2{ background:var(--secondary);} .c3{ background:var(--accent);} .c4{ background:#8b5cf6;} .c5{ background:#ef4444;}
+    @media print{ body{ background:#fff; } .appbar{ display:none !important; } .card{ box-shadow:none; border:1px solid #ddd; } .btn{ display:none !important; } a::after{ content:""; } }
+    .muted{ color:#6b7280; } .ok{ color:var(--secondary); font-weight:700;} .warn{ color:var(--accent); font-weight:700;} .risk{ color:var(--danger); font-weight:700;}
+    /* AI 區塊補充 */
+    .status{ font-size:13px; color:#475569; }
+    .result{ white-space:pre-wrap; line-height:1.6; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+</style>
+</head>
+<body>
+    <!-- 頂部動作列 -->
+    <div class="appbar">
+        <div class="brand">
+            <div class="logo" aria-hidden="true"></div>
+            <div>
+                <div class="title">手掌健康觀察報告</div>
+                <div class="badge" id="today"></div>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-outline" id="resetBtn" title="重置評分">重置評分</button>
+            <button class="btn btn-primary" onclick="window.print()">列印／下載 PDF</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 上載與基本資料 -->
+        <div class="card">
+            <h2>① 上載手掌相片</h2>
+            <div class="upload">
+                <img id="preview" class="preview" alt="手掌相片預覽（可上載）"/>
+                <div>
+                    <input type="file" id="file" accept="image/*">
+                    <p class="muted">提示：上載清晰、光線均勻、手掌打開嘅相片。<br>
+                        你亦可把伺服器上已存在嘅圖片網址貼到：<br>
+                        <input id="imgUrl" placeholder="https://example.com/your-hand.jpg" style="width:min(520px, 86vw); padding:10px; border-radius:8px; border:1px solid #e5e7eb; margin-top:6px;">
+                    </p>
+                    <div class="muted">預設已根據你提供嘅相片作初步觀察（非診斷）。</div>
+                    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button id="analyzeBtn" class="btn btn-primary">以 AI 分析手掌相片</button>
+                        <span id="aiStatus" class="status" aria-live="polite"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 重點觀察卡片（靜態示例，可保留） -->
+        <div class="grid grid-3">
+            <div class="card">
+                <h3>掌色｜循環</h3>
+                <p>整體<span class="ok">偏紅潤</span>，近拇指球位帶<span class="warn">輕微黃調</span>；未見明顯紫斑或蒼白。</p>
+                <div class="chip"><i class="c2"></i> 末梢循環尚可</div>
+                <div class="chip"><i class="c3"></i> 留意油脂攝取</div>
+            </div>
+            <div class="card">
+                <h3>皮膚｜水份</h3>
+                <p>紋理清晰、<span class="warn">略乾</span>；疑與運動及出汗、水分補給不足有關。</p>
+                <div class="chip"><i class="c3"></i> 加強補水</div>
+                <div class="chip"><i class="c1"></i> 運動後補給</div>
+            </div>
+            <div class="card">
+                <h3>肌丘｜勞損</h3>
+                <p>大魚際飽滿，中魚際偏平；食指與中指根部見<span class="warn">輕微厚繭</span>，與握拍／重覆動作相關。</p>
+                <div class="chip"><i class="c4"></i> 前臂與腕伸展</div>
+                <div class="chip"><i class="c5"></i> 避免過度負荷</div>
+            </div>
+        </div>
+
+        <!-- 對照表 -->
+        <div class="card">
+            <h2>② 觀察 → 可能含意 → 生活建議（可作健康溝通用）</h2>
+            <div style="overflow:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:28%">觀察</th>
+                        <th style="width:32%">可能含意（非診斷）</th>
+                        <th>生活建議</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>掌色偏淡紅、拇指球近掌心微黃</td>
+                        <td>循環尚可；輕微黃調或與飲食油脂、肝膽代謝負擔有關</td>
+                        <td>減少油炸與動物脂肪、增加綠葉蔬菜與水果；如持續或加重，可考慮驗肝功能／膽紅素</td>
+                    </tr>
+                    <tr>
+                        <td>掌心紋理明顯、皮膚略乾</td>
+                        <td>可能水分補給不足；運動出汗後未及時補充</td>
+                        <td>每日飲水約 1.5–2 公升；運動後補電解質；外用護手霜；飲食可增加 Omega-3</td>
+                    </tr>
+                    <tr>
+                        <td>大魚際飽滿，中魚際稍平</td>
+                        <td>精力尚可；脾胃消化吸收或需加強</td>
+                        <td>七分飽、細嚼慢嚥；優先高纖與優質蛋白；規律作息促進腸胃節律</td>
+                    </tr>
+                    <tr>
+                        <td>指根部輕微厚繭與色差</td>
+                        <td>長期握拍／重覆動作的摩擦與壓力跡象</td>
+                        <td>訓練前熱身與拉伸；使用止滑膠／護帶；若疼痛或麻木，尋求物理治療評估</td>
+                    </tr>
+                    <tr>
+                        <td>未見明顯紫藍或極度蒼白</td>
+                        <td>暫未見末梢灌流顯著不足</td>
+                        <td>維持規律運動（每週≥150 分鐘中等強度），避免長時久坐</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <!-- 互動評分與圖表 -->
+        <div class="grid grid-2">
+            <div class="card">
+                <h2>③ 自我評估（0=差｜10=理想）</h2>
+                <div class="row"><label>水分與皮膚保濕</label><div><input type="range" id="s_hydration" min="0" max="10" value="6" oninput="upd(this)"><output id="o_hydration">6</output></div></div>
+                <div class="row"><label>肝膽代謝壓力</label><div><input type="range" id="s_hepatic"   min="0" max="10" value="6" oninput="upd(this)"><output id="o_hepatic">6</output></div></div>
+                <div class="row"><label>脾胃消化吸收</label><div><input type="range" id="s_digest"    min="0" max="10" value="5" oninput="upd(this)"><output id="o_digest">5</output></div></div>
+                <div class="row"><label>末梢血液循環</label><div><input type="range" id="s_circ"      min="0" max="10" value="8" oninput="upd(this)"><output id="o_circ">8</output></div></div>
+                <div class="row"><label>重覆動作／勞損風險</label><div><input type="range" id="s_overuse"   min="0" max="10" value="5" oninput="upd(this)"><output id="o_overuse">5</output></div></div>
+                <p class="muted">註：以上為生活型態向度，供追蹤趨勢用；非醫療診斷。</p>
+            </div>
+            <div class="card">
+                <h2>④ 視覺化概覽</h2>
+                <canvas id="chart" height="220"></canvas>
+                <p class="muted">建議每 2–4 星期更新一次分數並列印保存。</p>
+            </div>
+        </div>
+
+        <!-- AI 分析結果 -->
+        <div class="card">
+            <h2>⑤ AI 手診分析結果</h2>
+            <div id="aiResult" class="result muted">（上載相片後按「以 AI 分析手掌相片」取得結果。內容僅供健康管理參考，非醫療診斷。）</div>
+        </div>
+
+        <!-- 待辦／行動清單 -->
+        <div class="card">
+            <h2>⑥ 下週行動清單</h2>
+            <ul>
+                <li>每天分段飲水，目標 <strong>1.5–2 公升</strong>；運動後補電解質。</li>
+                <li>飲食：<strong>少油炸、多蔬果</strong>；七分飽，蛋白質均衡。</li>
+                <li>訓練前後做 <strong>腕、前臂伸展</strong> 及肩帶活化；必要時使用護帶。</li>
+                <li>若掌黃或皮膚乾裂持續 → 進行 <strong>肝功能、膽紅素、空腹血糖</strong> 等檢查。</li>
+            </ul>
+        </div>
+
+        <!-- 免責 -->
+        <div class="card">
+            <h3>免責聲明</h3>
+            <p class="muted">本報告屬個人健康管理參考，並非醫療診斷或治療建議；如有任何不適或異常，請及早向合資格醫護人員求診。</p>
+        </div>
+    </div>
+
+<script>
+    // 日期
+    document.getElementById('today').textContent = new Date().toLocaleString('zh-Hant', {
+        year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'
+    });
+
+    // 圖片上載／URL 載入
+    const file = document.getElementById('file');
+    const url = document.getElementById('imgUrl');
+    const preview = document.getElementById('preview');
+
+    file.addEventListener('change', (e)=>{
+        const f = e.target.files?.[0];
+        if(!f) return;
+        const reader = new FileReader();
+        reader.onload = ev => preview.src = ev.target.result;
+        reader.readAsDataURL(f);
+    });
+    url.addEventListener('change', ()=>{
+        if(url.value.trim()) preview.src = url.value.trim();
+    });
+
+    // 評分＆圖表
+    const labels = ['水分與保濕↑', '肝膽代謝↓', '脾胃消化↑', '末梢循環↑', '勞損風險↓'];
+    const scales = { s_hydration:6, s_hepatic:6, s_digest:5, s_circ:8, s_overuse:5 };
+
+    const ctx = document.getElementById('chart');
+    let chart = new Chart(ctx, {
+        type:'radar',
+        data:{ labels, datasets:[{ label:'目前評分', data:Object.values(scales), fill:true, tension:0.25 }] },
+        options:{ responsive:true, plugins:{ legend:{ display:false }, tooltip:{ enabled:true } }, scales:{ r:{ beginAtZero:true, max:10, min:0, ticks:{ stepSize:2 } } } }
+    });
+    function upd(el){
+        const id = el.id, val = +el.value; scales[id] = val;
+        document.getElementById('o_'+id.split('_')[1]).textContent = val;
+        chart.data.datasets[0].data = Object.values(scales); chart.update();
+    }
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+        const defaults = { s_hydration:6, s_hepatic:6, s_digest:5, s_circ:8, s_overuse:5 };
+        for (const k in defaults){ const el = document.getElementById(k); el.value = defaults[k]; upd(el); }
+    });
+
+    // ===== AI 分析：把圖像轉成 base64 並送到 /api/analyze =====
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const aiStatus = document.getElementById('aiStatus');
+    const aiResult = document.getElementById('aiResult');
+
+    async function getImageDataURL(){
+        // 1) 若使用者上載檔案，preview.src 會是 dataURL；2) 若貼 URL，則嘗試抓回為 blob 再轉 dataURL
+        const src = preview.src;
+        if(!src){ throw new Error('請先上載或貼上圖片 URL'); }
+        if(src.startsWith('data:image')) return src;
+
+        // 不是 dataURL，嘗試以跨來源抓圖轉 base64（注意：若圖源未允許 CORS 可能失敗）
+        const res = await fetch(src, { mode:'cors' });
+        const blob = await res.blob();
+        return await new Promise((resolve)=>{
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.readAsDataURL(blob);
+        });
+    }
+
+    analyzeBtn.addEventListener('click', async ()=>{
+        try{
+            aiStatus.textContent = '分析中…請稍候';
+            aiResult.classList.add('muted');
+            aiResult.textContent = '（AI 正在分析你的手掌相片…）';
+
+            const dataURL = await getImageDataURL();
+
+            const resp = await fetch('/.netlify/functions/analyze', {
+                method:'POST',
+                headers:{ 'Content-Type':'application/json' },
+                body: JSON.stringify({ imageDataURL: dataURL })
+            });
+
+            if(!resp.ok){
+                const errText = await resp.text();
+                throw new Error('伺服器錯誤：' + errText);
+            }
+
+            const json = await resp.json();
+            aiResult.classList.remove('muted');
+            aiResult.textContent = json.text || '（未取得 AI 回覆）';
+            aiStatus.textContent = '完成';
+
+        }catch(err){
+            aiStatus.textContent = '失敗';
+            aiResult.classList.remove('muted');
+            aiResult.innerHTML = '分析失敗：<span class="mono">'+ (err?.message || err) +'</span><br>可檢查：圖片是否可存取、已部署 Netlify Function、是否設定 OPENAI_API_KEY。';
+        }
+    });
+</script>
+</body>
+</html>
