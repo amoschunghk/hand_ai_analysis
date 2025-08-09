@@ -47,7 +47,7 @@ export default async (req, context) => {
 
     // 發送到 OpenRouter API（多模態：文字 + 圖像）
     const payload = {
-      model: "openai/gpt-4-vision",
+      model: "google/gemini-2.0-flash-exp:free",
       messages: [
         {
           role: "system",
