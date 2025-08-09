@@ -16,7 +16,15 @@ export default async (req, context) => {
     }
 
     // 安全：從環境讀取金鑰
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    let apiKey = process.env.OPENROUTER_API_KEY;
+    console.log("API Key from env:", !!apiKey);
+    
+    // 如果環境變數中沒有 API key，則使用硬編碼的 API key
+    if (!apiKey) {
+      console.log("Using hardcoded API key as fallback");
+      apiKey = "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";
+    }
+    
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'API key missing' }), {
         status: 500,
@@ -39,7 +47,7 @@ export default async (req, context) => {
 
     // 發送到 OpenRouter API（多模態：文字 + 圖像）
     const payload = {
-      model: "openai/gpt-oss-20b:free",
+      model: "openai/gpt-4-vision",
       messages: [
         {
           role: "system",
@@ -55,6 +63,8 @@ export default async (req, context) => {
         }
       ]
     };
+    
+    console.log("Using model:", payload.model);
 
     const openaiResp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -69,7 +79,8 @@ export default async (req, context) => {
 
     if (!openaiResp.ok) {
       const errText = await openaiResp.text();
-      return new Response(JSON.stringify({ error: "OpenRouter API 錯誤", detail: errText }), {
+      console.error("OpenRouter API Error:", openaiResp.status, errText);
+      return new Response(JSON.stringify({ error: "OpenRouter API 錯誤", detail: errText, status: openaiResp.status }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' }
       });
