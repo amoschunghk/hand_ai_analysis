@@ -18,7 +18,7 @@ export default async (req, context) => {
       // 安全：從環境讀取金鑰
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
-        return new Response(JSON.stringify({ error: '伺服器未設定 OPENAI_API_KEY' }), {
+        return new Response(JSON.stringify({ error: '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' }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
