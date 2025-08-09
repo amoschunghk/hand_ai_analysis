@@ -39,7 +39,7 @@ export default async (req, context) => {
 
     // 發送到 OpenRouter API（多模態：文字 + 圖像）
     const payload = {
-      model: "openai/gpt-4o-mini",
+      model: "openai/gpt-oss-20b:free",
       messages: [
         {
           role: "system",
