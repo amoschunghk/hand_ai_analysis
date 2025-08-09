@@ -293,7 +293,7 @@
         }catch(err){
             aiStatus.textContent = '失敗';
             aiResult.classList.remove('muted');
-            aiResult.innerHTML = '分析失敗：<span class="mono">'+ (err?.message || err) +'</span><br>可檢查：圖片是否可存取、已部署 Netlify Function、是否設定 OPENAI_API_KEY。';
+            aiResult.innerHTML = '分析失敗：<span class="mono">'+ (err?.message || err) +'</span><br>可檢查：圖片是否可存取、已部署 Netlify Function、是否設定 OPENROUTER_API_KEY。';
         }
     });
 </script>
