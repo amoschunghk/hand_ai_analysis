@@ -56,15 +56,33 @@ export default async (req, context) => {
         {
           role: "user",
           content: [
-            { type: "text", text: userPrompt },
-            // 直接傳 dataURL（base64）
-            { type: "image_url", image_url: { url: imageDataURL } }
+            {
+              type: "text",
+              text: userPrompt
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageDataURL
+              }
+            }
           ]
         }
       ]
     };
     
     console.log("Using model:", payload.model);
+    
+    // 打印請求詳情以便調試
+    console.log("Request payload structure:", JSON.stringify({
+      model: payload.model,
+      messagesStructure: payload.messages.map(m => ({
+        role: m.role,
+        contentTypes: Array.isArray(m.content) 
+          ? m.content.map(c => c.type) 
+          : typeof m.content
+      }))
+    }));
 
     const openaiResp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -80,7 +98,25 @@ export default async (req, context) => {
     if (!openaiResp.ok) {
       const errText = await openaiResp.text();
       console.error("OpenRouter API Error:", openaiResp.status, errText);
-      return new Response(JSON.stringify({ error: "OpenRouter API 錯誤", detail: errText, status: openaiResp.status }), {
+      
+      // 嘗試解析錯誤詳情
+      let detailError = errText;
+      try {
+        const errJson = JSON.parse(errText);
+        if (errJson.error) {
+          detailError = typeof errJson.error === 'string' 
+            ? errJson.error 
+            : JSON.stringify(errJson.error);
+        }
+      } catch (e) {
+        // 保持原始錯誤文本
+      }
+      
+      return new Response(JSON.stringify({ 
+        error: "OpenRouter API 錯誤", 
+        detail: detailError, 
+        status: openaiResp.status 
+      }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' }
       });
