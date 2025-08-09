@@ -1,5 +1,5 @@
 // netlify/functions/analyze.js
-// Node 18+。請在 Netlify 上設定環境變數 OPENAI_API_KEY
+// Node 18+。請在 Netlify 上設定環境變數 OPENROUTER_API_KEY
 
 export default async (req, context) => {
   try {
@@ -16,9 +16,9 @@ export default async (req, context) => {
     }
 
     // 安全：從環境讀取金鑰
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: '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' }), {
+      return new Response(JSON.stringify({ error: 'API key missing' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -37,37 +37,39 @@ export default async (req, context) => {
 若影像不清晰，請先給出「需要更清晰的拍攝要點」。
 `.trim();
 
-    // 發送到 OpenAI Responses API（多模態：文字 + 圖像）
+    // 發送到 OpenRouter API（多模態：文字 + 圖像）
     const payload = {
-      model: "gpt-4o-mini",
-      input: [
+      model: "openai/gpt-4o-mini",
+      messages: [
         {
           role: "system",
-          content: [{ type: "input_text", text: systemPrompt }]
+          content: systemPrompt
         },
         {
           role: "user",
           content: [
-            { type: "input_text", text: userPrompt },
+            { type: "text", text: userPrompt },
             // 直接傳 dataURL（base64）
-            { type: "input_image", image_url: { url: imageDataURL } }
+            { type: "image_url", image_url: { url: imageDataURL } }
           ]
         }
       ]
     };
 
-    const openaiResp = await fetch("openai/gpt-oss-20b:free", {
+    const openaiResp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://hand-ai-analysis.netlify.app/",
+        "X-Title": "Hand AI Analysis"
       },
       body: JSON.stringify(payload)
     });
 
     if (!openaiResp.ok) {
       const errText = await openaiResp.text();
-      return new Response(JSON.stringify({ error: "OpenAI API 錯誤", detail: errText }), {
+      return new Response(JSON.stringify({ error: "OpenRouter API 錯誤", detail: errText }), {
         status: 502,
         headers: { 'Content-Type': 'application/json' }
       });
@@ -75,31 +77,26 @@ export default async (req, context) => {
 
     const data = await openaiResp.json();
 
-    // 嘗試通用方式抽取文字（Responses API 的回傳可能更新，做降級容錯）
-    const fallbackToText = (obj) => {
-      if (!obj) return "";
-      if (typeof obj === "string") return obj;
-      if (Array.isArray(obj)) return obj.map(fallbackToText).join("\n");
-      if (obj.output_text) return obj.output_text;
-
-      // 尋找 output[].content[].text
-      if (obj.output && Array.isArray(obj.output)) {
-        for (const item of obj.output) {
-          if (item?.content && Array.isArray(item.content)) {
-            const t = item.content.map(c => c?.text || "").join("\n").trim();
-            if (t) return t;
-          }
+    // 從 OpenRouter 回應中提取文字
+    const extractText = (data) => {
+      if (!data) return "";
+      
+      // OpenRouter API 回傳格式
+      if (data.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+        const message = data.choices[0].message;
+        if (message && message.content) {
+          return typeof message.content === 'string' 
+            ? message.content 
+            : Array.isArray(message.content)
+              ? message.content.map(c => c.text || "").join("\n")
+              : JSON.stringify(message.content);
         }
       }
-      // 一些情況在 top-level 的 content
-      if (obj.content && Array.isArray(obj.content)) {
-        const t = obj.content.map(c => c?.text || "").join("\n").trim();
-        if (t) return t;
-      }
-      return JSON.stringify(obj);
+      
+      return JSON.stringify(data);
     };
 
-    const text = fallbackToText(data).trim();
+    const text = extractText(data).trim();
 
     return new Response(JSON.stringify({ text }), {
       status: 200,
